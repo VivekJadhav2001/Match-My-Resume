@@ -65,9 +65,11 @@ function createTooltip(selectedText){
     )
     }
 
+    setTimeout(()=>{
+      tooltip.remove()
+    },3000)
+
 
     document.body.appendChild(tooltip)
 
 }
-
-
