@@ -1,31 +1,46 @@
+import axios from "axios"
 
 async function geminiResumeScore(jd, resumeData){
 
-    //Prompt
+    const prompt = `
+Compare the Resume and Job Description.
 
-    //Payload
+Return ONLY a number from 0-100 representing ATS match score.
+
+Job Description:
+${jd}
+
+Resume:
+${resumeData}
+`
 
     const payload = {
-        contents: [{ parts: [{ text: prompt }] }],
-        systemInstruction: {
-        parts: [{ text: "Act like you are a FAANG ATC Checker." }],
-      },
+        contents:[
+            {
+                parts:[{ text: prompt }]
+            }
+        ]
     }
 
-    //Api URL
+    const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`
 
-    const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    try{
 
+        const response = await axios.post(URL,payload)
 
-    //POST CALL
+        const text = response.data.candidates[0].content.parts[0].text
 
+        const score = Number(text.match(/\d+/)[0])
 
-    //Extract Score From The Response
+        return score
 
-    //Send The Score to User
+    }catch(err){
+
+        console.log("Gemini Error",err.response?.data)
+
+        return null
+    }
+
 }
 
-
-export {
-    geminiResumeScore
-}
+export {geminiResumeScore}

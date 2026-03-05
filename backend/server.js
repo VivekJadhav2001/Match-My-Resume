@@ -2,8 +2,12 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
+import { geminiResumeScore } from "./aiAPICall.js";
+import dotenv from "dotenv"
 const PORT = 3000;
 const app = express();
+
+dotenv.config()
 
 app.use(
   cors({
@@ -25,9 +29,14 @@ app.post("/getResumeScore", upload.single("resume"), async (req, res) => {
   const normalText = await parser.getText();
   // const normalText = await pdf(resumeBuffer)
 
-  console.log(normalText, "NORMAL TEXT");
+//   console.log(normalText, "NORMAL TEXT");
 
-  
+  const score = await geminiResumeScore(jd,normalText)
+
+  console.log(score,"Score of my Resume")
+
+  const base64Resume = resumeBuffer.toString("base64");
+
 
   res.status(200).json({
     message: "converted",
