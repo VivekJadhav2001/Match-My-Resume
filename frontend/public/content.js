@@ -1,75 +1,85 @@
-console.log("content.js")
-let tooltip
+console.log("content.js loaded");
 
-document.addEventListener("mouseup",(e)=>{
-    
-    const selectedText = window.getSelection().toString().trim()
+let tooltip = null;
+let selectedText = "";
 
-    console.log(selectedText,selectedText.length,'selected text triggering')
+document.addEventListener("mouseup", () => {
 
-    // Dont create new tool tip if jd/selected string is less than 50 charecters
-    if(selectedText.length > 50){
-        createTooltip(selectedText)
-    }
+  const selection = window.getSelection().toString().trim();
 
-})
+  console.log(selection.length, "selected text triggering");
 
+  if (selection.length > 20) {
 
-// Creates a tooltip after selecting text
-function createTooltip(selectedText){
-    // Remove if any previous tooltip  existing
-    if(tooltip){
-        tooltip.remove()
-    }
+    selectedText = selection;
+    createTooltip();
 
-    tooltip = document.createElement("div")
+  }
 
-    tooltip.innerText = "Check Score"
-    tooltip.style.height = '30px'
-    tooltip.style.width = "90px"
+});
 
-    tooltip.style.borderRadius = "15px"
+function createTooltip() {
 
-    tooltip.style.cursor = "pointer"
+  if (tooltip) tooltip.remove();
 
-    tooltip.style.background = "black"
-    tooltip.style.color = "white"
+  tooltip = document.createElement("div");
 
-    tooltip.style.position = "absolute"
-    tooltip.style.zIndex = "999"
+  tooltip.innerText = "Check Score";
 
-    const selection = window.getSelection()
-    const range = selection.getRangeAt(0)
-    const rect = range.getBoundingClientRect()
+  tooltip.style.cssText = `
+  height:30px;
+  width:110px;
+  border-radius:15px;
+  cursor:pointer;
+  background:black;
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:absolute;
+  z-index:9999;
+  font-size:12px;
+  padding:5px;
+  white-space:pre-line;
+  `;
 
-    tooltip.style.top = `${rect.bottom + window.scrollY}px`
-    tooltip.style.left = `${rect.left + window.scrollX}px`
+  const range = window.getSelection().getRangeAt(0);
+  const rect = range.getBoundingClientRect();
 
+  tooltip.style.top = `${rect.bottom + window.scrollY + 5}px`;
+  tooltip.style.left = `${rect.left + window.scrollX}px`;
 
+  tooltip.onclick = () => {
 
-    tooltip.onclick = ()=>{
-        console.log("clicking tooltip")
-      // Update tool tip inner text "loading ..."
-        tooltip.innerText = "Checking..."
+    tooltip.innerText = "Checking...";
 
-
-      // Call function in background.js 
-      chrome.runtime.sendMessage({
-        type:"CHECK_JD",
-        jobDescription:selectedText
+    chrome.runtime.sendMessage(
+      {
+        type: "CHECK_JD",
+        jobDescription: selectedText
       },
-      //callback will have response from backeground file
-      (response)=>{
-        tooltip.innerText = response
+      (response) => {
+
+        if (!response) {
+          tooltip.innerText = "Error";
+          return;
+        }
+
+        tooltip.innerText =
+`ATS Score: ${response.score}%
+
+Missing Keywords
+• ${response.missingKeywords.join("\n• ")}`;
+
       }
-    )
-    }
+    );
 
-    setTimeout(()=>{
-      tooltip.remove()
-    },3000)
+  };
 
+  document.body.appendChild(tooltip);
 
-    document.body.appendChild(tooltip)
+  setTimeout(() => {
+    tooltip?.remove();
+  }, 8000);
 
 }

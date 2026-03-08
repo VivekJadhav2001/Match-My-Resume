@@ -1,55 +1,81 @@
-console.log("Background.js file");
+console.log("Background.js running");
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // console.log(message,sender,sendResponse)
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
-  if (message.type === "CHECK_JD") {
-    // sendResponse("75%")
+  if (request.type === "CHECK_JD") {
 
-    sendingFileAndText(message.jobDescription, sendResponse);
+    sendingFileAndText(request.jobDescription, sendResponse);
 
-    //Convert file into blob(binary)
-
-    //Convert blob into base64
-
-    return true;
   }
+
+  return true;
 });
 
+function base64ToBlob(base64) {
+
+  const parts = base64.split(",");
+  const byteString = atob(parts[1]);
+  const mimeString = parts[0].split(":")[1].split(";")[0];
+
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+
+  return new Blob([ab], { type: mimeString });
+
+}
+
 async function sendingFileAndText(jobDescription, sendResponse) {
-  try {
-    const resumeFileLink = chrome.runtime.getURL(
-      "Vivek_Jadhav_Resume_2026.pdf",
-    );
 
-    //pdf file is returned in form of Streams(binary data)
-    const fileResources = await fetch(resumeFileLink);
+chrome.storage.local.get(["resume"], async (result) => {
 
-    //All Binary data CHUNKS in one big Object
-    const blobFormat = await fileResources.blob();
+  if (!result.resume) {
 
-    console.log(blobFormat, "BOLB FORMAT");
-
-    const formData = new FormData();
-    formData.append("resume", blobFormat, "resume.pdf");
-    formData.append("jd", jobDescription);
-
-    for (let [key, value] of formData.entries()) {
-      console.log(key, value, "FORM DATA");
-    }
-
-    // call backend API
-    const apiRes = await fetch("http://localhost:3000/getResumeScore", {
-      method: "POST",
-      body: formData,
+    sendResponse({
+      score: 0,
+      missingKeywords: []
     });
 
-    const data = await apiRes.json();
-
-    console.log(data, "DATA FROM API");
-    sendResponse(data.message);
-  } catch (error) {
-    console.log(error, "Error in calling api");
-    sendResponse({ error: "Error in callinf api" });
+    return;
   }
+
+  const blob = base64ToBlob(result.resume);
+
+  const formData = new FormData();
+
+  formData.append("resume", blob, "resume.pdf");
+  formData.append("jd", jobDescription);
+
+  try {
+
+  const apiRes = await fetch("http://localhost:3000/getResumeScore", {
+    method: "POST",
+    body: formData
+  });
+
+  const data = await apiRes.json();
+
+  chrome.storage.local.set({
+    lastScore: data.score,
+    missingKeywords: data.missingKeywords
+  });
+
+  sendResponse(data);
+
+  } catch (err) {
+
+  console.log("API ERROR", err);
+
+  sendResponse({
+    score: 0,
+    missingKeywords: []
+  });
+
+  }
+
+});
+
 }

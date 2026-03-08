@@ -1,46 +1,73 @@
-import axios from "axios"
+import axios from "axios";
+import dotenv from "dotenv";
 
-async function geminiResumeScore(jd, resumeData){
+dotenv.config();
 
-    const prompt = `
-Compare the Resume and Job Description.
+async function groqResumeScore(jd, resume) {
+  const prompt = `
+You are an ATS resume analyzer.
 
-Return ONLY a number from 0-100 representing ATS match score.
+Compare the Job Description and Resume.
+
+Steps:
+1. Extract important technical keywords from the Job Description.
+2. Check which keywords are missing in the Resume.
+3. Calculate an ATS match score (0-100).
+
+Return ONLY valid JSON in this format:
+
+{
+"score": number,
+"missingKeywords": ["keyword1","keyword2","keyword3"]
+}
+
+Rules:
+- Score must be integer between 0-100
+- missingKeywords must contain only skills/tools
+- Max 10 keywords
+- No explanations
 
 Job Description:
 ${jd}
 
 Resume:
-${resumeData}
-`
+${resume}
+`;
 
-    const payload = {
-        contents:[
-            {
-                parts:[{ text: prompt }]
-            }
-        ]
-    }
+  try {
+    const response = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.2,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
 
-    const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`
+    const text = response.data.choices[0].message.content;
 
-    try{
+    const json = JSON.parse(text);
 
-        const response = await axios.post(URL,payload)
+    return json;
+  } catch (err) {
+    console.log("GROQ ERROR", err.response?.data);
 
-        const text = response.data.candidates[0].content.parts[0].text
-
-        const score = Number(text.match(/\d+/)[0])
-
-        return score
-
-    }catch(err){
-
-        console.log("Gemini Error",err.response?.data)
-
-        return null
-    }
-
+    return {
+      score: 0,
+      missingKeywords: [],
+    };
+  }
 }
 
-export {geminiResumeScore}
+export { groqResumeScore };
