@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
-import { geminiResumeScore } from "./aiAPICall.js";
+import { groqResumeScore } from "./aiAPICall.js";
 import dotenv from "dotenv"
 const PORT = 3000;
 const app = express();
@@ -31,7 +31,7 @@ app.post("/getResumeScore", upload.single("resume"), async (req, res) => {
 
 //   console.log(normalText, "NORMAL TEXT");
 
-  const score = await geminiResumeScore(jd,normalText)
+  const score = await groqResumeScore(jd,normalText)
 
   console.log(score,"Score of my Resume")
 
