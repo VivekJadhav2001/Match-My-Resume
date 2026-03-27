@@ -3,65 +3,70 @@ import cors from "cors";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
 import { groqResumeScore } from "./aiAPICall.js";
-import dotenv from "dotenv"
+import dotenv from "dotenv";
+
 const PORT = 3000;
 const app = express();
 
-dotenv.config()
+dotenv.config();
 
 app.use(
   cors({
     origin: "*",
-    methods: ["POST", "GET", "PATCH", "PUT", "DELETE"],
-  }),
+    methods: ["POST", "GET"],
+  })
 );
 
-// multer setup
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.post("/getResumeScore", upload.single("resume"), async (req, res) => {
-  const jd = req.body.jd;
-  const resumeBuffer = req.file.buffer;
-//   console.log(resumeBuffer, "RESUME BUFFER");
+  try {
+    console.log("API HIT ✅");
 
-  const parser = new PDFParse({ data: resumeBuffer });
+    const jd = req.body.jd;
 
-  const normalText = await parser.getText();
-  // const normalText = await pdf(resumeBuffer)
+    if (!req.file) {
+      return res.status(400).json({
+        score: 0,
+        missingKeywords: [],
+      });
+    }
 
-//   console.log(normalText, "NORMAL TEXT");
+    const resumeBuffer = req.file.buffer;
 
-  const score = await groqResumeScore(jd,normalText)
+    const parser = new PDFParse({ data: resumeBuffer });
+    const parsed = await parser.getText();
 
-  console.log(score,"Score of my Resume")
+    const normalText = parsed.text;
 
-  const base64Resume = resumeBuffer.toString("base64");
+    if (!normalText) {
+      console.log("PDF PARSE FAILED ❌");
 
+      return res.status(200).json({
+        score: 0,
+        missingKeywords: [],
+      });
+    }
 
-  res.status(200).json({
-    message: "converted",
-    resumeBase64: base64Resume,
-  });
+    // 🔥 CALL GROQ
+    const result = await groqResumeScore(jd, normalText);
+
+    console.log(result, "Score of my Resume");
+
+    // ✅ RETURN CORRECT FORMAT
+    res.status(200).json({
+      score: result.score || 0,
+      missingKeywords: result.missingKeywords || [],
+    });
+
+  } catch (error) {
+    console.log("SERVER ERROR ❌", error);
+
+    res.status(500).json({
+      score: 0,
+      missingKeywords: [],
+    });
+  }
 });
 
-app.listen(PORT, () => console.log("SERVER RUNNING ON 3000"));
-
-
-
-
-/*
-
-
-const base64Resume = resumeBuffer.toString("base64");
-
-  //converting to base64
-  const originalBuffer = Buffer.from(base64Resume, "base64");
-
-  // console.log(base64Resume.substring(0,100),"BASE64 STRING")
-  // console.log(normalText,"NORMAL RESUME STRING")
-
-  // console.log(originalBuffer,"ORIGINAL TEXT!!!")
-  const decoder = new TextDecoder("utf-8");
-  const originalText = decoder.decode(originalBuffer);
-
-  // console.log(originalText,"ORIGINAL TEXT")*/
+app.listen(PORT, () => console.log("SERVER RUNNING ON 3000 🚀"));
