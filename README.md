@@ -1,4 +1,4 @@
-# ⚡ Resume JD Matcher — Chrome Extension
+# ⚡ Match My Resume — Chrome Extension
 
 A Chrome Extension that scores your resume against any Job Description on the web in real time, powered by **Groq (LLaMA 3.1)** and a local Node.js backend.
 
